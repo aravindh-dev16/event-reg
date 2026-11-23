@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>College Event Registration Management System</title>
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: #f1f5f9; color: #0f172a; }
+header { background: #0f766e; color: #fff; padding: 20px; text-align: center; }
+header h1 { margin: 0; font-size: 1.5rem; }
+header p { margin: 4px 0 0; opacity: .85; }
+main { display: grid; grid-template-columns: 340px 1fr; gap: 16px; max-width: 1100px; margin: 16px auto; padding: 0 12px; }
+@media (max-width: 800px) { main { grid-template-columns: 1fr; } }
+.card { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+h2 { margin-top: 0; font-size: 1.1rem; }
+form { display: grid; gap: 8px; margin-bottom: 16px; }
+.row { display: flex; gap: 8px; }
+.row > * { flex: 1; min-width: 0; }
+input, select { padding: 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: .95rem; width: 100%; }
+button { padding: 9px 14px; border: 0; border-radius: 6px; background: #0d9488; color: #fff; font-size: .95rem; cursor: pointer; }
+button:hover { background: #0f766e; }
+button.danger { background: #dc2626; }
+button.danger:hover { background: #b91c1c; }
+button.ghost { background: #e2e8f0; color: #0f172a; }
+button.ghost:hover { background: #cbd5e1; }
+button.small { padding: 4px 8px; font-size: .8rem; }
+.msg { margin: 0; font-size: .85rem; min-height: 1em; color: #dc2626; }
+.msg.ok { color: #16a34a; }
+#eventList { list-style: none; padding: 0; margin: 10px 0 0; max-height: 380px; overflow: auto; }
+#eventList li { padding: 10px; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 6px; cursor: pointer; }
+#eventList li:hover, #eventList li.active { background: #f0fdfa; border-color: #0d9488; }
+#eventList small { color: #64748b; display: block; }
+.empty { color: #64748b; text-align: center; padding: 40px 0; }
+.head { display: flex; justify-content: space-between; align-items: start; gap: 8px; }
+.head h2 { margin-bottom: 2px; }
+.tag { display: inline-block; background: #ccfbf1; color: #115e59; border-radius: 20px; padding: 2px 10px; font-size: .8rem; }
+.tag.full { background: #fee2e2; color: #991b1b; }
+.info { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin: 14px 0; }
+.info div { background: #f8fafc; padding: 8px; border-radius: 6px; font-size: .9rem; }
+.info b { display: block; font-size: .75rem; color: #64748b; font-weight: 500; }
+.bar { height: 10px; background: #e2e8f0; border-radius: 6px; overflow: hidden; margin: 6px 0 14px; }
+.bar span { display: block; height: 100%; background: #0d9488; }
+.summary { display: flex; gap: 12px; flex-wrap: wrap; margin: 10px 0; }
+.summary div { background: #0f766e; color: #fff; padding: 10px 16px; border-radius: 8px; }
+.summary b { display: block; font-size: 1.3rem; }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; margin: 10px 0; }
+th, td { padding: 7px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+th { background: #f1f5f9; }
+.scroll { overflow-x: auto; }
+.in { color: #16a34a; font-weight: 600; }
+.out { color: #64748b; }
+.actions { display: flex; gap: 6px; flex-wrap: wrap; }
+footer { text-align: center; color: #64748b; font-size: .85rem; padding: 16px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎟️ College Event Registration Management System</h1>
+  <p>Built with Object-Oriented JavaScript</p>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Create Event</h2>
+    <form id="eventForm">
+      <input id="title" placeholder="Event title" required />
+      <div class="row">
+        <input id="date" type="date" required />
+        <input id="venue" placeholder="Venue" required />
+      </div>
+      <div class="row">
+        <input id="capacity" type="number" min="1" placeholder="Seats" required />
+        <input id="fee" type="number" min="0" placeholder="Fee (₹)" required />
+      </div>
+      <button type="submit">Add Event</button>
+      <p id="eventMsg" class="msg"></p>
+    </form>
+
+    <h2>Events</h2>
+    <input id="search" placeholder="Search events…" />
+    <ul id="eventList"></ul>
+  </section>
+
+  <section class="card" id="detail">
+    <p class="empty">Select an event to manage registrations.</p>
+  </section>
+</main>
+
+<footer>OOP concepts: Abstraction · Encapsulation · Inheritance · Polymorphism · Composition</footer>
+
+<script>
+/* =====================================================================
+   College Event Registration Management System
+   1. Abstraction   -> Person is abstract
+   2. Encapsulation -> private fields (#name, #registrations ...) + validation
+   3. Inheritance   -> InternalParticipant / ExternalParticipant extend Participant extends Person
+   4. Polymorphism  -> getFee() and getType() overridden in subclasses
+   5. Composition   -> Event HAS-A list of Registration objects; Registration HAS-A Participant
+   ===================================================================== */
+
+class Person {
+  #name; #email;
+  constructor(name, email) {
+    if (new.target === Person) throw new Error("Person is abstract.");
+    this.name = name;
+    this.email = email;
+  }
+  get name() { return this.#name; }
+  set name(v) {
+    if (!v || v.trim().length < 2) throw new Error("Name must have at least 2 characters.");
+    this.#name = v.trim();
+  }
+  get email() { return this.#email; }
+  set email(v) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) throw new Error("Invalid email address.");
+    this.#email = v.trim().toLowerCase();
+  }
+  getType() { throw new Error("getType() must be implemented."); }
+}
+
+class Participant extends Person {
+  #phone; #college;
+  constructor(name, email, phone, college) {
+    super(name, email);
+    if (!/^\d{10}$/.test(phone)) throw new Error("Phone number must be 10 digits.");
+    if (!college || !college.trim()) throw new Error("College is required.");
+    this.#phone = phone;
+    this.#college = college.trim();
+  }
+  get phone() { return this.#phone; }
+  get college() { return this.#college; }
+  getFee(base) { return base; }
+  toJSON() {
+    return { kind: this.kind, name: this.name, email: this.email, phone: this.#phone, college: this.#college };
+  }
+  get kind() { return "internal"; }
+}
+
+class InternalParticipant extends Participant {
+  getType() { return "Internal (20% off)"; }
+  getFee(base) { return Math.round(base * 0.8); }
+  get kind() { return "internal"; }
+}
+
+class ExternalParticipant extends Participant {
+  getType() { return "External"; }
+  getFee(base) { return base; }
+  get kind() { return "external"; }
+}
+
+class Registration {
+  #id; #participant; #time; #checkedIn;
+  constructor(participant, id = null, time = null, checkedIn = false) {
+    this.#id = id || "R" + Date.now().toString(36).toUpperCase() + Math.floor(Math.random() * 100);
+    this.#participant = participant;
+    this.#time = time || new Date().toISOString();
+    this.#checkedIn = checkedIn;
+  }
+  get id() { return this.#id; }
+  get participant() { return this.#participant; }
+  get time() { return this.#time; }
+  get checkedIn() { return this.#checkedIn; }
+  toggleCheckIn() { this.#checkedIn = !this.#checkedIn; }
+  toJSON() {
+    return { id: this.#id, time: this.#time, checkedIn: this.#checkedIn, participant: this.#participant.toJSON() };
+  }
+}
+
+class Event {
+  #id; #title; #date; #venue; #capacity; #fee;
+  #registrations = [];
+  constructor(title, date, venue, capacity, fee, id = null) {
+    if (!title || !title.trim()) throw new Error("Title is required.");
+    if (!date) throw new Error("Date is required.");
+    if (!venue || !venue.trim()) throw new Error("Venue is required.");
+    if (!(capacity >= 1)) throw new Error("Seats must be at least 1.");
+    if (!(fee >= 0)) throw new Error("Fee cannot be negative.");
+    this.#id = id || "E" + Date.now().toString(36).toUpperCase();
+    this.#title = title.trim();
+    this.#date = date;
+    this.#venue = venue.trim();
+    this.#capacity = Number(capacity);
+    this.#fee = Number(fee);
+  }
+  get id() { return this.#id; }
+  get title() { return this.#title; }
+  get date() { return this.#date; }
+  get venue() { return this.#venue; }
+  get capacity() { return this.#capacity; }
+  get fee() { return this.#fee; }
+  get registrations() { return [...this.#registrations]; }
+  get count() { return this.#registrations.length; }
+  get seatsLeft() { return this.#capacity - this.#registrations.length; }
+  get isFull() { return this.seatsLeft <= 0; }
+  get checkedInCount() { return this.#registrations.filter(r => r.checkedIn).length; }
+  get revenue() { return this.#registrations.reduce((s, r) => s + r.participant.getFee(this.#fee), 0); }
+
+  register(participant, existing = null) {
+    if (this.isFull && !existing) throw new Error("Sorry, this event is full.");
+    if (this.#registrations.some(r => r.participant.email === participant.email)) {
+      throw new Error("This email is already registered for the event.");
+    }
+    const reg = existing || new Registration(participant);
+    this.#registrations.push(reg);
+    return reg;
+  }
+  cancel(regId) { this.#registrations = this.#registrations.filter(r => r.id !== regId); }
+  findReg(regId) { return this.#registrations.find(r => r.id === regId); }
+
+  toJSON() {
+    return {
+      id: this.#id, title: this.#title, date: this.#date, venue: this.#venue,
+      capacity: this.#capacity, fee: this.#fee,
+      registrations: this.#registrations.map(r => r.toJSON())
+    };
+  }
+}
+
+class EventManager {
+  #events = [];
+  #key = "event-registration-v1";
+  constructor() { this.load(); }
+
+  get events() { return [...this.#events]; }
+  add(ev) { this.#events.push(ev); this.save(); }
+  remove(id) { this.#events = this.#events.filter(e => e.id !== id); this.save(); }
+  find(id) { return this.#events.find(e => e.id === id); }
+  search(t) {
+    t = t.trim().toLowerCase();
+    return this.#events.filter(e => e.title.toLowerCase().includes(t) || e.venue.toLowerCase().includes(t));
+  }
+
+  static createParticipant(kind, ...args) {   // factory
+    return kind === "external" ? new ExternalParticipant(...args) : new InternalParticipant(...args);
+  }
+
+  save() {
+    try { localStorage.setItem(this.#key, JSON.stringify(this.#events)); } catch (e) { /* storage unavailable */ }
+  }
+  load() {
+    try {
+      const data = JSON.parse(localStorage.getItem(this.#key) || "[]");
+      this.#events = data.map(d => {
+        const ev = new Event(d.title, d.date, d.venue, d.capacity, d.fee, d.id);
+        d.registrations.forEach(r => {
+          const p = r.participant;
+          const part = EventManager.createParticipant(p.kind, p.name, p.email, p.phone, p.college);
+          ev.register(part, new Registration(part, r.id, r.time, r.checkedIn));
+        });
+        return ev;
+      });
+    } catch (e) { this.#events = []; }
+  }
+}
+
+/* ========================= UI ========================= */
+const manager = new EventManager();
+let selectedId = null;
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmtDate = d => new Date(d + "T00:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+
+function renderList() {
+  const evs = manager.search($("search").value);
+  $("eventList").innerHTML = evs.length ? evs.map(e => `
+    <li data-id="${esc(e.id)}" class="${e.id === selectedId ? "active" : ""}">
+      <strong>${esc(e.title)}</strong>
+      <small>${fmtDate(e.date)} · ${esc(e.venue)} · ${e.count}/${e.capacity} seats</small>
+    </li>`).join("") : '<li style="cursor:default">No events found.</li>';
+}
+
+function renderDetail() {
+  const box = $("detail");
+  const ev = manager.find(selectedId);
+  if (!ev) { box.innerHTML = '<p class="empty">Select an event to manage registrations.</p>'; return; }
+  const pct = Math.round((ev.count / ev.capacity) * 100);
+  const rows = ev.registrations.map(r => {
+    const p = r.participant;
+    return `<tr>
+      <td>${esc(r.id)}</td><td>${esc(p.name)}</td><td>${esc(p.email)}</td>
+      <td>${esc(p.college)}</td><td>${esc(p.getType())}</td><td>₹${p.getFee(ev.fee)}</td>
+      <td class="${r.checkedIn ? "in" : "out"}">${r.checkedIn ? "Checked in" : "Pending"}</td>
+      <td><div class="actions">
+        <button class="ghost small" data-checkin="${esc(r.id)}">${r.checkedIn ? "Undo" : "Check-in"}</button>
+        <button class="danger small" data-cancel="${esc(r.id)}">Cancel</button>
+      </div></td></tr>`;
+  }).join("");
+
+  box.innerHTML = `
+    <div class="head">
+      <div><h2>${esc(ev.title)}</h2>
+        <span class="tag ${ev.isFull ? "full" : ""}">${ev.isFull ? "Full" : ev.seatsLeft + " seats left"}</span></div>
+      <div class="actions">
+        <button class="ghost small" id="exportBtn">Export CSV</button>
+        <button class="danger small" id="deleteEvent">Delete Event</button>
+      </div>
+    </div>
+    <div class="info">
+      <div><b>Date</b>${fmtDate(ev.date)}</div>
+      <div><b>Venue</b>${esc(ev.venue)}</div>
+      <div><b>Fee</b>₹${ev.fee}</div>
+      <div><b>Capacity</b>${ev.capacity}</div>
+    </div>
+    <div class="bar"><span style="width:${pct}%"></span></div>
+    <div class="summary">
+      <div><b>${ev.count}</b>Registered</div>
+      <div><b>${ev.checkedInCount}</b>Checked in</div>
+      <div><b>${ev.seatsLeft}</b>Seats left</div>
+      <div><b>₹${ev.revenue}</b>Collection</div>
+    </div>
+
+    <h2>Register Participant</h2>
+    <form id="regForm">
+      <div class="row"><input id="pName" placeholder="Full name" required /><input id="pEmail" type="email" placeholder="Email" required /></div>
+      <div class="row"><input id="pPhone" placeholder="Phone (10 digits)" required /><input id="pCollege" placeholder="College" required /></div>
+      <select id="pKind">
+        <option value="internal">Internal student (20% off)</option>
+        <option value="external">External participant</option>
+      </select>
+      <button type="submit">Register</button>
+      <p id="regMsg" class="msg"></p>
+    </form>
+
+    <h2>Registrations</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>College</th><th>Type</th><th>Fee</th><th>Status</th><th></th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="8">No registrations yet.</td></tr>'}</tbody>
+    </table></div>`;
+}
+
+function refresh() { renderList(); renderDetail(); }
+
+$("eventForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const m = $("eventMsg");
+  try {
+    const ev = new Event($("title").value, $("date").value, $("venue").value, Number($("capacity").value), Number($("fee").value));
+    manager.add(ev);
+    selectedId = ev.id;
+    e.target.reset();
+    m.textContent = "Event created!"; m.className = "msg ok";
+    refresh();
+  } catch (err) { m.textContent = err.message; m.className = "msg"; }
+});
+
+$("search").addEventListener("input", renderList);
+
+$("eventList").addEventListener("click", e => {
+  const li = e.target.closest("li[data-id]");
+  if (!li) return;
+  selectedId = li.dataset.id;
+  refresh();
+});
+
+$("detail").addEventListener("submit", e => {
+  if (e.target.id !== "regForm") return;
+  e.preventDefault();
+  const ev = manager.find(selectedId);
+  try {
+    const p = EventManager.createParticipant($("pKind").value, $("pName").value, $("pEmail").value, $("pPhone").value.trim(), $("pCollege").value);
+    ev.register(p);
+    manager.save();
+    refresh();
+    const m = $("regMsg"); m.textContent = "Registered successfully!"; m.className = "msg ok";
+  } catch (err) { $("regMsg").textContent = err.message; }
+});
+
+$("detail").addEventListener("click", e => {
+  const ev = manager.find(selectedId);
+  if (!ev) return;
+  const t = e.target;
+  if (t.dataset.cancel) {
+    if (confirm("Cancel this registration?")) { ev.cancel(t.dataset.cancel); manager.save(); refresh(); }
+  } else if (t.dataset.checkin) {
+    ev.findReg(t.dataset.checkin).toggleCheckIn(); manager.save(); refresh();
+  } else if (t.id === "deleteEvent") {
+    if (confirm(`Delete "${ev.title}" and all its registrations?`)) { manager.remove(ev.id); selectedId = null; refresh(); }
+  } else if (t.id === "exportBtn") {
+    const q = v => `"${String(v).replace(/"/g, '""')}"`;
+    const lines = [["Reg ID", "Name", "Email", "Phone", "College", "Type", "Fee", "Status"].join(",")];
+    ev.registrations.forEach(r => {
+      const p = r.participant;
+      lines.push([r.id, p.name, p.email, p.phone, p.college, p.getType(), p.getFee(ev.fee), r.checkedIn ? "Checked in" : "Pending"].map(q).join(","));
+    });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/csv" }));
+    a.download = ev.title.replace(/\W+/g, "_") + "_registrations.csv";
+    a.click();
+  }
+});
+
+refresh();
+</script>
+</body>
+</html>
